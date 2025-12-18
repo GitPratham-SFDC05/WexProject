@@ -1,0 +1,121 @@
+<template>
+
+    <!-- PROGRESS PATH -->
+    <lightning-progress-indicator current-step={currentStep} type="path">
+        <lightning-progress-step label="Project" value="1"></lightning-progress-step>
+        <lightning-progress-step label="Milestones" value="2"></lightning-progress-step>
+        <lightning-progress-step label="Tasks" value="3"></lightning-progress-step>
+        <lightning-progress-step label="Overview" value="4"></lightning-progress-step>
+    </lightning-progress-indicator>
+
+    <!-- STEP 1 -->
+    <template if:true={isStep1}>
+        <lightning-card title="Create Project">
+            <lightning-record-edit-form object-api-name="Project__c" onsuccess={handleProjectCreated}>
+                <lightning-input-field field-name="Name"></lightning-input-field>
+                <lightning-button type="submit" variant="brand" label="Next"></lightning-button>
+            </lightning-record-edit-form>
+        </lightning-card>
+    </template>
+
+    <!-- STEP 2 -->
+    <!-- STEP 2 -->
+    <template if:true={isStep2}>
+        <lightning-card title="Add Milestones">
+
+            <template for:each={milestones} for:item="m" for:index="index">
+                <div key={m.key} class="slds-box slds-m-bottom_small">
+
+                    <lightning-input label="Milestone Name" value={m.Name} data-index={index} required
+                        onchange={handleMilestoneNameChange}>
+                    </lightning-input>
+
+
+                    <lightning-button-icon icon-name="utility:delete" alternative-text="Remove" data-index={index}
+                        onclick={removeMilestone} class="slds-m-top_x-small">
+                    </lightning-button-icon>
+
+                </div>
+            </template>
+
+            <div class="slds-m-top_medium">
+                <lightning-button label="Add Milestone" onclick={addMilestone}>
+                </lightning-button>
+
+                <lightning-button variant="brand" label="Next" class="slds-m-left_small" onclick={saveMilestones}>
+                </lightning-button>
+            </div>
+
+        </lightning-card>
+    </template>
+
+
+    <!-- STEP 3 -->
+    <!-- STEP 3 -->
+    <template if:true={isStep3}>
+        <lightning-card title="Add Tasks">
+
+            <!-- Select Milestone -->
+            <lightning-combobox label="Select Milestone" value={selectedMilestone} options={milestoneOptions}
+                onchange={handleMilestoneChange}>
+            </lightning-combobox>
+
+            <!-- Task Rows -->
+            <template for:each={tasks} for:item="task" for:index="index">
+                <div key={task.key} class="slds-box slds-m-top_small">
+
+                    <lightning-input label="Task Name" value={task.Name} data-index={index}
+                        onchange={handleTaskNameChange}>
+                    </lightning-input>
+
+                    <lightning-combobox label="Status" value={task.Status__c} data-index={index} options={statusOptions}
+                        onchange={handleTaskStatusChange}>
+                    </lightning-combobox>
+
+                </div>
+            </template>
+
+            <!-- Actions -->
+            <div class="slds-m-top_medium">
+                <lightning-button label="Add Task" onclick={addTask}>
+                </lightning-button>
+
+                <lightning-button variant="brand" label="Finish" onclick={saveTasks} class="slds-m-left_small">
+                </lightning-button>
+            </div>
+
+        </lightning-card>
+    </template>
+
+
+    <!-- STEP 4 -->
+    <template if:true={isStep4}>
+        <lightning-card title="Project Overview">
+
+            <!-- PROJECT PROGRESS -->
+            <h3>Project Progress</h3>
+            <lightning-progress-bar value={projectCompletion} size="large"></lightning-progress-bar>
+            <p>{projectCompletion}% Complete</p>
+
+            <!-- MILESTONES -->
+            <template for:each={overview} for:item="m">
+                <div key={m.Id} class="slds-box slds-m-top_small">
+                    <strong>{m.Name}</strong>
+                    <lightning-progress-bar value={m.Completion_Percentage__c}></lightning-progress-bar>
+                    <p>{m.Milestone_Status__c}</p>
+
+                    <template for:each={m.Project_Tasks__r} for:item="t">
+                        <p key={t.Id}>
+                            {t.Name} —
+                            <lightning-combobox value={t.Status__c} data-id={t.Id} options={statusOptions}
+                                onchange={updateTaskStatus}>
+                            </lightning-combobox>
+                        </p>
+                    </template>
+                </div>
+            </template>
+
+        </lightning-card>
+    </template>
+
+</template>
