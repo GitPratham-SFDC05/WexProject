@@ -1,12 +1,12 @@
-import { LightningElement, track } from 'lwc';
+import { LightningElement, track, api, wire } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
-
-
+import getProjectWithMilestones
+    from '@salesforce/apex/ProjectWizardController.getProjectWithMilestones';
+import { refreshApex } from '@salesforce/apex';
 import createMilestones from '@salesforce/apex/ProjectWizardController.createMilestones';
 import createTasks from '@salesforce/apex/ProjectWizardController.createTasks';
-import getOverview from '@salesforce/apex/ProjectWizardController.getProjectOverview';
-import updateTask from '@salesforce/apex/ProjectWizardController.updateTaskStatus';
+
 export default class ProjectwithmilestoneWizard extends LightningElement {
 
     currentStep = '1';
@@ -15,21 +15,41 @@ export default class ProjectwithmilestoneWizard extends LightningElement {
     @track milestones = [];
     @track tasks = [];
     @track overview = [];
-
+    @track project;
     selectedMilestone;
     projectCompletion = 0;
+
+    @api recordId; // Automatically provided on Project__c record page
+
+    project;        // Holds Project__c data
+    milestones = [];
 
     milestoneColumns = [
         { label: 'Milestone Name', fieldName: 'Name', editable: true }
     ];
 
-
+    @track wiredResult;
 
     statusOptions = [
         { label: 'Not Started', value: 'Not Started' },
         { label: 'In Progress', value: 'In Progress' },
         { label: 'Complete', value: 'Complete' }
     ];
+
+    @wire(getProjectWithMilestones, { projectId: '$recordId' })
+    wiredProject(result) {
+        this.wiredResult = result;
+
+        if (result.data) {
+            this.project = result.data;
+            this.milestones = result.data.Project_Milestones__r || [];
+        } else if (result.error) {
+            console.error(result.error);
+            this.project = null;
+            this.milestones = [];
+        }
+    }
+
 
 
 
@@ -40,12 +60,11 @@ export default class ProjectwithmilestoneWizard extends LightningElement {
     get isStep4() { return this.currentStep === '4'; }
 
 
-
     handleProjectCreated(event) {
         this.projectId = event.detail.id;
+        this.recordId = event.detail.id; // 
         this.currentStep = '2';
     }
-
     addMilestone() {
         this.milestones = [
             ...this.milestones,
@@ -71,21 +90,8 @@ export default class ProjectwithmilestoneWizard extends LightningElement {
 
 
     async saveMilestones() {
-        if (this.milestones.length === 0) {
-            this.showToast(
-                'Validation Error',
-                'Add at least one milestone.',
-                'error'
-            );
-            return;
-        }
-
-        if (this.milestones.some(m => !m.Name)) {
-            this.showToast(
-                'Validation Error',
-                'All milestones must have a name.',
-                'error'
-            );
+        if (this.milestones.length === 0 || this.milestones.some(m => !m.Name)) {
+            this.showToast('Validation Error', 'All milestones must have a name', 'error');
             return;
         }
 
@@ -99,31 +105,7 @@ export default class ProjectwithmilestoneWizard extends LightningElement {
             value: m.Id
         }));
 
-        this.currentStep = '3';
-    }
-
-
-
-    async saveMilestones() {
-        if (this.milestones.some(m => !m.Name)) {
-            this.showToast(
-                'Validation Error',
-                'All milestones must have a name',
-                'error'
-            );
-            return;
-        }
-
-        const insertedMilestones = await createMilestones({
-            projectId: this.projectId,
-            records: this.milestones.map(m => ({ Name: m.Name }))
-        });
-
-        this.milestoneOptions = insertedMilestones.map(m => ({
-            label: m.Name,
-            value: m.Id
-        }));
-
+        await refreshApex(this.wiredResult); // 
         this.currentStep = '3';
     }
 
@@ -161,32 +143,21 @@ export default class ProjectwithmilestoneWizard extends LightningElement {
 
 
     async saveTasks() {
-        const recordsToInsert = this.tasks.map(t => ({
-            Name: t.Name,
-            Status__c: t.Status__c
-        }));
+        if (!this.selectedMilestone) {
+            this.showToast('Error', 'Select a milestone', 'error');
+            return;
+        }
 
         await createTasks({
             milestoneId: this.selectedMilestone,
-            tasks: recordsToInsert
+            tasks: this.tasks.map(t => ({
+                Name: t.Name,
+                Status__c: t.Status__c
+            }))
         });
 
-        this.loadOverview();
+        await refreshApex(this.wiredResult); // 
         this.currentStep = '4';
-    }
-
-
-    async loadOverview() {
-        this.overview = await getOverview({ projectId: this.projectId });
-        this.projectCompletion = Math.round(
-            this.overview.reduce((sum, m) => sum + m.Completion_Percentage__c, 0) /
-            this.overview.length
-        );
-    }
-
-    async updateTaskStatus(event) {
-        await updateTask({ taskId: event.target.dataset.id, status: event.detail.value });
-        this.loadOverview();
     }
 
     showToast(title, message, variant) {

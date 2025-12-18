@@ -90,32 +90,33 @@
 
     <!-- STEP 4 -->
     <template if:true={isStep4}>
-        <lightning-card title="Project Overview">
 
-            <!-- PROJECT PROGRESS -->
-            <h3>Project Progress</h3>
-            <lightning-progress-bar value={projectCompletion} size="large"></lightning-progress-bar>
-            <p>{projectCompletion}% Complete</p>
+        <template if:true={project}>
 
-            <!-- MILESTONES -->
-            <template for:each={overview} for:item="m">
-                <div key={m.Id} class="slds-box slds-m-top_small">
-                    <strong>{m.Name}</strong>
-                    <lightning-progress-bar value={m.Completion_Percentage__c}></lightning-progress-bar>
-                    <p>{m.Milestone_Status__c}</p>
-
-                    <template for:each={m.Project_Tasks__r} for:item="t">
-                        <p key={t.Id}>
-                            {t.Name} —
-                            <lightning-combobox value={t.Status__c} data-id={t.Id} options={statusOptions}
-                                onchange={updateTaskStatus}>
-                            </lightning-combobox>
-                        </p>
-                    </template>
+            <lightning-card title="Project Overview">
+                <div class="slds-p-around_medium">
+                    <p><strong>Project Name:</strong> {project.Name}</p>
+                    <p><strong>Total Milestones:</strong> {project.Total_Milestones__c}</p>
+                    <p><strong>Completion %:</strong> {project.Completion_Project_Percentage__c}%</p>
+                    <p><strong>Status:</strong> {project.Project_Status__c}</p>
                 </div>
+            </lightning-card>
+
+            <template if:true={milestones}>
+                <lightning-card title="Milestones">
+                    <template for:each={milestones} for:item="m">
+                        <div key={m.Id} class="slds-box slds-m-around_small">
+                            <p>{m.Name}</p>
+                            <p>Total Tasks: {m.Total_Tasks__c}</p>
+                            <p>Incomplete: {m.Incomplete_Tasks__c}</p>
+                            <p>Status: {m.Milestone_Status__c}</p>
+                        </div>
+                    </template>
+                </lightning-card>
             </template>
 
-        </lightning-card>
+        </template>
     </template>
+
 
 </template>

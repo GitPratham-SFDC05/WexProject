@@ -86,4 +86,36 @@ public with sharing class ProjectWizardController {
         );
     }
 
+    @AuraEnabled(cacheable=true)
+    public static Project__c getProjectWithMilestones(Id projectId) {
+
+        if (projectId == null) {
+            return null;
+        }
+
+        return [
+            SELECT
+                Id,
+                Name,
+                Total_Milestones__c,
+                Total_Milestone_Completion_Sum__c,
+                Completion_Project_Percentage__c,
+                Project_Status__c,
+                (
+                    SELECT
+                        Id,
+                        Name,
+                        Total_Tasks__c,
+                        Incomplete_Tasks__c,
+                        Completion_Percent_Value__c,
+                        Completion_Percentage__c,
+                        Milestone_Status__c
+                    FROM Project_Milestones__r
+                )
+            FROM Project__c
+            WHERE Id = :projectId
+            LIMIT 1
+        ];
+    }
+
 }
